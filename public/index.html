@@ -1148,6 +1148,11 @@ const api = async (u, m = 'GET', b = null, headers = {}) => {
     headers: { 'Content-Type': 'application/json', ...headers },
     body: b ? JSON.stringify(b) : void 0
   });
+  const ct = r.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) {
+    if (r.status === 401 || u === 'me') throw new Error('Unauthorized');
+    throw new Error('Server returned non-JSON response');
+  }
   const d = await r.json().catch(() => ({}));
   if (r.status === 401 && !u.startsWith('admin') && u !== 'me' && u !== 'login') {
     return boot();
@@ -1240,8 +1245,10 @@ function bindTopBarEvents() {
 async function boot() {
   try {
     me = await api('me');
+    if (!me || !me.id) throw new Error('Not logged in');
     nav();
   } catch {
+    me = null;
     authView();
   }
 }
