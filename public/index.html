@@ -928,7 +928,7 @@ nav a.on {
   border-bottom: 2px dashed var(--line);
 }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<!-- Tesseract removed: OCR handled by backend RapidAPI -->
 </head>
 <body>
 <canvas id="confetti-canvas"></canvas>
@@ -1172,7 +1172,7 @@ const fresh = () => draft = {
   category: 'Food',
   tax: 0,
   split: false,
-  items: [{ name: '', price: '', people: ['Me'] }]
+  items: [{ name: '', qty: 1, unitPrice: 0, price: 0, people: ['Me'] }]
 };
 
 // Theme Management
@@ -1629,7 +1629,17 @@ function sync() {
     split: $('#sp').checked
   });
   document.querySelectorAll('.nm').forEach((e, i) => { if (draft.items[i]) draft.items[i].name = e.value; });
-  document.querySelectorAll('.pr').forEach((e, i) => { if (draft.items[i]) draft.items[i].price = e.value; });
+  document.querySelectorAll('.qty').forEach((e, i) => {
+    if (draft.items[i]) {
+      draft.items[i].qty = Math.max(1, parseInt(e.value) || 1);
+    }
+  });
+  document.querySelectorAll('.upr').forEach((e, i) => {
+    if (draft.items[i]) {
+      draft.items[i].unitPrice = +e.value || 0;
+      draft.items[i].price = Math.round(draft.items[i].qty * draft.items[i].unitPrice);
+    }
+  });
 }
 
 // Calculate real-time split shares so user sees exactly who pays what BEFORE saving
@@ -1687,7 +1697,7 @@ async function newView() {
 function draw() {
   const names = ['Me', ...friends.map(f => f.name)];
   const d = draft;
-  const rawItemTotal = d.items.reduce((s, i) => s + (+i.price || 0), 0);
+  const rawItemTotal = d.items.reduce((s, i) => s + (i.price > 0 ? +i.price : (i.qty || 1) * (+i.unitPrice || 0)), 0);
   const total = rawItemTotal + (+d.tax || 0);
   const liveShares = d.split ? computeLiveShares(d.items, +d.tax || 0) : {};
 
@@ -1728,15 +1738,17 @@ function draw() {
 
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
         <label style="margin:0;">Line Items</label>
-        <span style="font-size:0.82rem;color:var(--mute);">Item name & price</span>
+        <span style="font-size:0.82rem;color:var(--mute);">Qty × Unit Price = Total</span>
       </div>
 
       <div id="items-list" style="margin-top:8px;">
         ${d.items.map((it, i) => `
           <div style="background:var(--card-sub);border:1.5px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;">
-            <div style="display:grid;grid-template-columns:1fr 120px 34px;gap:8px;align-items:center;">
+            <div style="display:grid;grid-template-columns:1fr 56px 110px auto 34px;gap:6px;align-items:center;">
               <input class="nm" style="margin:0;" value="${esc(it.name)}" placeholder="Item name">
-              <input class="pr mono" style="margin:0;" type="number" min="0" value="${it.price}" placeholder="Rp">
+              <input class="qty mono" style="margin:0;text-align:center;" type="number" min="1" value="${it.qty || 1}" placeholder="Qty">
+              <input class="upr mono" style="margin:0;" type="number" min="0" value="${it.unitPrice != null ? it.unitPrice : (it.price || 0)}" placeholder="Unit Price">
+              <span class="mono itm-total" style="font-size:0.82rem;color:var(--mute);white-space:nowrap;min-width:60px;text-align:right;">${rp((it.qty || 1) * (it.unitPrice != null ? it.unitPrice : (it.price || 0)))}</span>
               <button class="ghost rm danger" style="padding:4px;font-size:16px;" data-i="${i}" title="Remove item">✕</button>
             </div>
             ${d.split ? `
@@ -1815,7 +1827,7 @@ function draw() {
   $('#add').onclick = () => {
     playSfx('click');
     sync();
-    draft.items.push({ name: '', price: '', people: ['Me'] });
+    draft.items.push({ name: '', qty: 1, unitPrice: 0, price: 0, people: ['Me'] });
     draw();
   };
 
@@ -1823,7 +1835,7 @@ function draw() {
     playSfx('click');
     sync();
     draft.items.splice(+b.dataset.i, 1);
-    if (!draft.items.length) draft.items.push({ name: '', price: '', people: ['Me'] });
+    if (!draft.items.length) draft.items.push({ name: '', qty: 1, unitPrice: 0, price: 0, people: ['Me'] });
     draw();
   });
 
@@ -1838,6 +1850,27 @@ function draw() {
     draw();
   });
 
+  // Live update qty/upr inputs without full redraw
+  document.querySelectorAll('.qty, .upr').forEach(inp => {
+    inp.oninput = () => {
+      sync();
+      // Update the sibling total span
+      const row = inp.closest('div[style*="grid"]');
+      if (row) {
+        const qtyEl = row.querySelector('.qty');
+        const uprEl = row.querySelector('.upr');
+        const totalEl = row.querySelector('.itm-total');
+        if (qtyEl && uprEl && totalEl) {
+          const lineTotal = Math.round(Math.max(1, parseInt(qtyEl.value) || 1) * (+uprEl.value || 0));
+          totalEl.textContent = rp(lineTotal);
+        }
+      }
+      // Recompute grand total display
+      const rawItemTotal = draft.items.reduce((s, i) => s + (i.price > 0 ? +i.price : (i.qty || 1) * (+i.unitPrice || 0)), 0);
+      const totalEl = document.querySelector('.mono[style*="1.6rem"]');
+      if (totalEl) totalEl.textContent = rp(rawItemTotal + (+draft.tax || 0));
+    };
+  });
   $('#t').oninput = () => { sync(); };
   $('#m').oninput = () => { sync(); };
   $('#d').onchange = () => { sync(); };
@@ -1847,7 +1880,7 @@ function draw() {
     playSfx('click');
     sync();
     const pct = +btn.dataset.pct;
-    const itemSub = draft.items.reduce((s, i) => s + (+i.price || 0), 0);
+    const itemSub = draft.items.reduce((s, i) => s + (i.price > 0 ? +i.price : (i.qty || 1) * (+i.unitPrice || 0)), 0);
     draft.tax = Math.round(itemSub * pct);
     draw();
   });
@@ -1870,43 +1903,53 @@ function draw() {
     }
   };
 
-  // Auto-Scan OCR with Viewfinder
+  // Auto-Scan OCR via backend RapidAPI
   $('#f').onchange = async e => {
     const f = e.target.files[0];
     if (!f) return;
-    if (!window.Tesseract) {
-      showToast('OCR engine not ready. Check internet connection and refresh.', 'error');
-      return;
-    }
     const hud = $('#scan-hud');
     const txt = $('#scan-txt');
     hud.style.display = 'block';
     playSfx('scan');
+    txt.textContent = 'Scanning receipt with AI... ✨';
 
     try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(f);
+      });
+
       sync();
-      txt.textContent = 'Reading receipt image... 0%';
-      const { data } = await Tesseract.recognize(f, 'eng', {
-        logger: m => {
-          if (m.status === 'recognizing text') {
-            txt.textContent = `Scanning lines... ${Math.round(m.progress * 100)}%`;
-          }
-        }
-      });
+      txt.textContent = 'Sending to OCR engine...';
+      const result = await api('scan', 'POST', { image: dataUrl });
       hud.style.display = 'none';
-      const parsed = parseReceipt(data.text);
+
+      // Pre-fill ALL form fields from OCR result
       Object.assign(draft, {
-        merchant: parsed.merchant || draft.merchant,
-        date: parsed.date || draft.date,
-        tax: parsed.tax || draft.tax,
-        items: parsed.items.length ? parsed.items : draft.items
+        merchant: result.merchant || draft.merchant,
+        date: result.date || draft.date,
+        category: result.category || draft.category,
+        tax: result.tax != null ? result.tax : draft.tax,
+        items: (result.items && result.items.length)
+          ? result.items.map(it => ({
+              name: it.name || '',
+              qty: it.qty || 1,
+              unitPrice: it.unitPrice || it.price || 0,
+              price: it.price || Math.round((it.qty || 1) * (it.unitPrice || 0)),
+              people: draft.split ? ['Me'] : []
+            }))
+          : draft.items
       });
+
       playSfx('success');
-      showToast(parsed.items.length ? `Found ${parsed.items.length} items! Please double-check.` : 'Could not detect items. Please input manually.', 'info');
+      const count = result.items?.length || 0;
+      showToast(count ? `✅ Ditemukan ${count} item! Periksa dan sesuaikan jika perlu.` : '⚠️ Tidak ada item terdeteksi. Isi manual ya.', count ? 'success' : 'info');
       draw();
     } catch (err) {
       hud.style.display = 'none';
-      showToast('Scan failed: ' + err.message, 'error');
+      showToast('Scan gagal: ' + err.message, 'error');
     }
   };
 }
@@ -1961,7 +2004,7 @@ function renderHist() {
 
         <!-- Line items brief -->
         <div style="margin:10px 0;padding:8px 12px;background:var(--card-sub);border-radius:10px;font-size:0.85rem;">
-          ${(r.items || []).slice(0, 3).map(i => `<span style="display:inline-block;margin-right:12px;">• ${esc(i.name)} (${rp(i.price)})</span>`).join('')}
+          ${(r.items || []).slice(0, 3).map(i => `<span style="display:inline-block;margin-right:12px;">• ${esc(i.name)}${(i.qty || 1) > 1 ? \` ×${i.qty}\` : ''} (${rp(i.price)})</span>`).join('')}
           ${(r.items || []).length > 3 ? `<span style="color:var(--mute);">+${r.items.length - 3} more</span>` : ''}
         </div>
 
@@ -2010,7 +2053,7 @@ function renderHist() {
       category: r.category,
       tax: r.tax,
       split: !!r.is_split,
-      items: r.items.map(i => ({ name: i.name, price: i.price, people: i.people?.length ? i.people : ['Me'] }))
+      items: r.items.map(i => ({ name: i.name, qty: i.qty || 1, unitPrice: i.unitPrice || i.price || 0, price: i.price || 0, people: i.people?.length ? i.people : ['Me'] }))
     };
     location.hash = '#new';
   });
