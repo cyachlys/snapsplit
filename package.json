@@ -1,0 +1,17 @@
+{
+  "name": "snapsplit",
+  "version": "1.0.0",
+  "description": "SplitWoi! - Bill splitting and expense tracking with zero hassle",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "migrate:turso": "node migrate-to-turso.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.18.0"
+  }
+}

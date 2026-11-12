@@ -1,0 +1,11 @@
+node_modules
+.env
+.env.local
+.env.*.local
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.vercel
+.DS_Store
+Thumbs.db
