@@ -2719,6 +2719,8 @@ function renderVaultReceipts(recs) {
       <input id="adm-rec-search" value="${esc(recSearchQuery)}" placeholder="Search by merchant, user name, or category...">
     </div>
 
+    <button class="btn acc" id="adm-xl-recs-btn" style="width:100%;margin-bottom:12px;">📊 Export ${filtered.length} receipts to Excel</button>
+
     ${filtered.length ? filtered.map(r => `
       <div class="card" style="padding:14px 18px;margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;align-items:start;gap:12px;">
@@ -2761,6 +2763,22 @@ function renderVaultTools(s) {
         <button class="btn acc" id="adm-export-btn" style="width:100%;">📥 Download Full Backup</button>
       </div>
 
+      <!-- Excel Export Card -->
+      <div class="card" style="margin:0;display:flex;flex-direction:column;justify-content:space-between;">
+        <div>
+          <span style="font-size:2rem;display:block;margin-bottom:8px;">📊</span>
+          <h3 style="margin:0 0 6px;">Export to Excel</h3>
+          <p style="color:var(--mute);font-size:0.88rem;margin:0 0 12px;">
+            Download all users' receipts as an .xlsx spreadsheet (Summary, Receipts, Items, Users). Optionally filter by date.
+          </p>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:14px;">
+            <div style="min-width:0;"><label>From</label><input id="adm-xl-from" type="date" style="margin:4px 0 0;"></div>
+            <div style="min-width:0;"><label>To</label><input id="adm-xl-to" type="date" style="margin:4px 0 0;"></div>
+          </div>
+        </div>
+        <button class="btn acc" id="adm-xl-btn" style="width:100%;">📊 Export to Excel</button>
+      </div>
+
       <!-- Cleanup Card -->
       <div class="card" style="margin:0;display:flex;flex-direction:column;justify-content:space-between;">
         <div>
@@ -2774,6 +2792,131 @@ function renderVaultTools(s) {
       </div>
     </div>
   `;
+}
+
+// ===== Admin: Export to Excel =====
+function loadSheetJS() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((resolve, reject) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    sc.onload = () => window.XLSX ? resolve(window.XLSX) : reject(new Error('Excel library failed to load'));
+    sc.onerror = () => reject(new Error('Could not load Excel library (check internet connection)'));
+    document.head.appendChild(sc);
+  });
+}
+
+function filterAdminRecs({ query = '', from = '', to = '' } = {}) {
+  const q = query.toLowerCase();
+  return adminRecsCache.filter(r => {
+    if (q && !((r.merchant || '').toLowerCase().includes(q) ||
+               (r.user_name || '').toLowerCase().includes(q) ||
+               (r.category || '').toLowerCase().includes(q))) return false;
+    const d = String(r.date || '').slice(0, 10);
+    if (from && d < from) return false;
+    if (to && d > to) return false;
+    return true;
+  });
+}
+
+async function exportAdminExcel(recs, label) {
+  const XLSX = await loadSheetJS();
+  const num = v => Number(v) || 0;
+  const itemLine = it => (it.price > 0 ? num(it.price) : num(it.qty || 1) * num(it.unitPrice));
+
+  // Sheet 1: Receipts
+  const recHead = ['Receipt ID', 'Date', 'User ID', 'User', 'Merchant', 'Category', 'Type', 'Items', 'Subtotal (Rp)', 'Tax & Service (Rp)', 'Total (Rp)'];
+  const recRows = recs.map(r => {
+    const items = r.items || [];
+    const sub = items.reduce((a, it) => a + itemLine(it), 0);
+    return [r.id, String(r.date || '').slice(0, 10), r.user_id, r.user_name || ('User #' + r.user_id),
+            r.merchant || '', r.category || '', r.is_split ? 'Split' : 'Solo', items.length, sub, num(r.tax), num(r.total)];
+  });
+  const wsRec = XLSX.utils.aoa_to_sheet([recHead, ...recRows]);
+  const last = recRows.length + 1;
+  if (recRows.length) {
+    XLSX.utils.sheet_add_aoa(wsRec, [['TOTAL', '', '', '', '', '', '', { t: 'n', f: `SUM(H2:H${last})` },
+      { t: 'n', f: `SUM(I2:I${last})` }, { t: 'n', f: `SUM(J2:J${last})` }, { t: 'n', f: `SUM(K2:K${last})` }]], { origin: -1 });
+    wsRec['!autofilter'] = { ref: `A1:K${last}` };
+  }
+  wsRec['!cols'] = [8, 12, 8, 18, 26, 14, 8, 8, 16, 18, 16].map(w => ({ wch: w }));
+  wsRec['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+  // Sheet 2: Items
+  const itemHead = ['Receipt ID', 'Date', 'User', 'Merchant', 'Category', 'Item', 'Qty', 'Unit Price (Rp)', 'Line Total (Rp)', 'Shared With'];
+  const itemRows = [];
+  recs.forEach(r => (r.items || []).forEach(it => {
+    const q = num(it.qty || 1);
+    const line = itemLine(it);
+    itemRows.push([r.id, String(r.date || '').slice(0, 10), r.user_name || ('User #' + r.user_id), r.merchant || '', r.category || '',
+      it.name || '', q, num(it.unitPrice) || Math.round(line / q), line, (it.people || []).join(', ')]);
+  }));
+  const wsItem = XLSX.utils.aoa_to_sheet([itemHead, ...itemRows]);
+  if (itemRows.length) wsItem['!autofilter'] = { ref: `A1:J${itemRows.length + 1}` };
+  wsItem['!cols'] = [8, 12, 18, 24, 14, 30, 6, 16, 16, 24].map(w => ({ wch: w }));
+
+  // Sheet 3: Users
+  const userHead = ['User ID', 'Name', 'Email', 'Receipts', 'Total Spent (Rp)', 'Friends', 'Debts Owed To Them (Rp)'];
+  const userRows = adminUsersCache.map(u => [u.id, u.name || '', u.email || '', num(u.receipts_count), num(u.total_spent), num(u.friends_count), num(u.debts_owed)]);
+  const wsUser = XLSX.utils.aoa_to_sheet([userHead, ...userRows]);
+  wsUser['!cols'] = [8, 20, 30, 10, 18, 9, 24].map(w => ({ wch: w }));
+
+  // Sheet 4: Summary (computed from the exported receipts)
+  const byUser = {}, byCat = {}, byMonth = {};
+  recs.forEach(r => {
+    const t = num(r.total);
+    const u = r.user_name || ('User #' + r.user_id);
+    (byUser[u] = byUser[u] || { n: 0, t: 0 }).n++; byUser[u].t += t;
+    const c = r.category || '-';
+    (byCat[c] = byCat[c] || { n: 0, t: 0 }).n++; byCat[c].t += t;
+    const m = String(r.date || '').slice(0, 7) || '-';
+    (byMonth[m] = byMonth[m] || { n: 0, t: 0 }).n++; byMonth[m].t += t;
+  });
+  const block = (title, obj, sortKey) => {
+    const rows = Object.entries(obj).sort((a, b) => sortKey ? a[0].localeCompare(b[0]) : b[1].t - a[1].t).map(([k, v]) => [k, v.n, v.t]);
+    return [[title, 'Receipts', 'Total (Rp)'], ...rows, []];
+  };
+  const grand = recs.reduce((a, r) => a + num(r.total), 0);
+  const sumAoa = [
+    ['SplitWoi Export Report'], ['Scope', label], ['Generated', new Date().toLocaleString('id-ID')],
+    ['Receipts', recs.length], ['Grand Total (Rp)', grand], [],
+    ...block('By User', byUser), ...block('By Category', byCat), ...block('By Month', byMonth, true)
+  ];
+  const wsSum = XLSX.utils.aoa_to_sheet(sumAoa);
+  wsSum['!cols'] = [{ wch: 26 }, { wch: 12 }, { wch: 18 }];
+
+  // Number format (thousands separator) for money columns
+  const fmt = (ws, cols, from, to) => {
+    for (let R = from; R <= to; R++) cols.forEach(C => {
+      const c = ws[XLSX.utils.encode_cell({ r: R, c: C })];
+      if (c && (c.t === 'n')) c.z = '#,##0';
+    });
+  };
+  fmt(wsRec, [8, 9, 10], 1, last);
+  fmt(wsItem, [7, 8], 1, itemRows.length);
+  fmt(wsUser, [4, 6], 1, userRows.length);
+  fmt(wsSum, [2], 0, sumAoa.length);
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, wsSum, 'Summary');
+  XLSX.utils.book_append_sheet(wb, wsRec, 'Receipts');
+  XLSX.utils.book_append_sheet(wb, wsItem, 'Items');
+  XLSX.utils.book_append_sheet(wb, wsUser, 'Users');
+  XLSX.writeFile(wb, `splitwoi-export-${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+async function runAdminExcel(btn, recs, label) {
+  if (!recs.length) { showToast('No receipts to export', 'error'); return; }
+  const old = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '⏳ Building Excel...';
+  try {
+    await exportAdminExcel(recs, label);
+    showToast(`Exported ${recs.length} receipts to Excel`, 'success');
+  } catch (e) {
+    alert('Excel export failed: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = old;
+  }
 }
 
 function bindVaultInteractive() {
@@ -2853,6 +2996,20 @@ function bindVaultInteractive() {
         }
       }
     };
+  });
+
+  // Export to Excel (Tools tab: all / date range)
+  $('#adm-xl-btn')?.addEventListener('click', e => {
+    playSfx('click');
+    const from = $('#adm-xl-from').value, to = $('#adm-xl-to').value;
+    const label = (from || to) ? `Date range ${from || '...'} to ${to || '...'}` : 'All receipts';
+    runAdminExcel(e.currentTarget, filterAdminRecs({ from, to }), label);
+  });
+  // Export to Excel (Receipts tab: current search filter)
+  $('#adm-xl-recs-btn')?.addEventListener('click', e => {
+    playSfx('click');
+    const label = recSearchQuery ? `Search: "${recSearchQuery}"` : 'All receipts';
+    runAdminExcel(e.currentTarget, filterAdminRecs({ query: recSearchQuery }), label);
   });
 
   // Export JSON Backup
