@@ -1052,6 +1052,37 @@ nav a.on { color: #111 !important; }
 /* bayangan di belakang logo (kotak lime) */
 .logo-badge { box-shadow: 4px 4px 0 #19191d, 0 18px 36px rgba(160,230,0,.55), 0 8px 22px rgba(255,79,154,.35) !important; }
 [data-theme="dark"] .logo-badge { box-shadow: 4px 4px 0 #000, 0 16px 40px rgba(198,255,61,.4), 0 8px 24px rgba(255,79,154,.3) !important; }
+/* ===== Home: compact mobile layout ===== */
+@media (max-width: 600px) {
+  main { padding-left: 12px; padding-right: 12px; }
+
+  .hero-banner { padding: 14px 16px; margin-bottom: 12px; border-radius: 16px; }
+  .hero-greeting { font-size: 1.25rem; line-height: 1.25; margin-bottom: 2px; }
+  .hero-sub { font-size: 0.8rem; line-height: 1.4; }
+  .quick-pills { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+  .quick-pill { justify-content: center; padding: 7px 8px; font-size: 12px; box-shadow: none; white-space: nowrap; }
+
+  .stat-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px !important; }
+  .stat-grid .stat { margin: 0; padding: 10px 12px; border-radius: 14px; min-width: 0;
+    display: grid; grid-template-columns: auto 1fr; grid-template-areas: "i l" "n n"; column-gap: 6px; align-items: center; }
+  .stat-grid .stat:first-child { grid-column: 1 / -1; }
+  .stat .stat-icon { grid-area: i; font-size: 1rem; margin: 0; }
+  .stat span:not(.stat-icon) { grid-area: l; font-size: 0.64rem; letter-spacing: 0.03em; line-height: 1.2; }
+  .stat b { grid-area: n; font-size: 1.2rem; margin-top: 2px; overflow-wrap: anywhere; }
+  .stat-grid .stat:first-child b { font-size: 1.45rem; }
+
+  .home-card { padding: 14px; margin-bottom: 12px; border-radius: 16px; }
+  .home-card h3 { font-size: 0.98rem; }
+  .home-card .tag { font-size: 10px; padding: 1px 7px; }
+  .home-card .bar-row { grid-template-columns: 62px minmax(0,1fr) auto; gap: 8px; margin: 8px 0; font-size: 0.8rem; }
+  .home-card .bar-row b { font-size: 0.78rem !important; }
+  .home-card .bar-track { height: 12px; }
+  .home-card .li { padding: 10px 0; gap: 8px; flex-wrap: wrap; }
+  .home-card .li b { font-size: 0.92rem; }
+  .home-card .debt-right { gap: 8px !important; margin-left: auto; }
+  .home-card .debt-right b { font-size: 0.92rem !important; }
+  .home-card .debt-right .btn { padding: 5px 10px !important; font-size: 12px !important; }
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 </head>
@@ -1661,7 +1692,7 @@ async function dash() {
     </div>
 
     <!-- Stat Metrics Cards with Number Animation -->
-    <div class="grid" style="margin-bottom:18px;">
+    <div class="grid stat-grid" style="margin-bottom:18px;">
       <div class="card stat anim-pop" style="animation-delay:0.08s;">
         <span class="stat-icon">💸</span>
         <span>Spent this month</span>
@@ -1680,7 +1711,7 @@ async function dash() {
     </div>
 
     <!-- Monthly Trend Chart -->
-    <div class="card anim-pop" style="animation-delay:0.26s;">
+    <div class="card home-card anim-pop" style="animation-delay:0.26s;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <h3 style="margin:0;">Monthly Spending</h3>
         <span class="tag alt">Last 6 Months</span>
@@ -1697,7 +1728,7 @@ async function dash() {
     </div>
 
     <!-- Category Breakdown -->
-    <div class="card anim-pop" style="animation-delay:0.32s;">
+    <div class="card home-card anim-pop" style="animation-delay:0.32s;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <h3 style="margin:0;">Where it went this month</h3>
         <span class="tag">Categories</span>
@@ -1714,7 +1745,7 @@ async function dash() {
     </div>
 
     <!-- Slowest Payers Card -->
-    <div class="card anim-pop" style="animation-delay:0.38s;">
+    <div class="card home-card anim-pop" style="animation-delay:0.38s;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <h3 style="margin:0;">Outstanding Debts</h3>
         <span style="font-size:0.85rem;color:var(--mute);">${r.slow.length ? 'Pending settlements' : 'All clear!'}</span>
@@ -1725,7 +1756,7 @@ async function dash() {
             <b>${esc(x.friend)}</b>
             <span style="display:block;color:var(--mute);font-size:0.82rem;">⏳ Waiting ${x.days} days</span>
           </div>
-          <div style="display:flex;align-items:center;gap:12px;">
+          <div class="debt-right" style="display:flex;align-items:center;gap:12px;">
             <b class="mono" style="color:var(--pink);font-size:1.05rem;">${rp(x.due)}</b>
             <a class="btn cyan" style="padding:6px 14px;font-size:13px;" target="_blank" href="https://wa.me/?text=${encodeURIComponent(`Hi ${x.friend}! Friendly reminder for our shared bill: your share is ${rp(x.due)}. Thanks! 🙏`)}">Nudge</a>
           </div>
