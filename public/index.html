@@ -9,6 +9,7 @@
 <meta name="theme-color" content="#f8f5ee">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%23c6ff3d'/><text x='50%' y='68%' font-size='55' font-weight='bold' text-anchor='middle' font-family='sans-serif'>⚡</text></svg>">
 <title>SplitWoi!</title>
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap">
@@ -85,6 +86,24 @@ body {
 
 .anim-pop { animation: popIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .anim-wave { display: inline-block; transform-origin: 70% 70%; animation: wave 1.8s ease-in-out infinite; }
+.logo-badge {
+  width: 84px; height: 84px;
+  margin: 0 auto 6px;
+  border-radius: 24px;
+  background: var(--acc);
+  border: 2px solid var(--line);
+  box-shadow: 4px 4px 0 var(--line);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 44px; color: #111;
+  animation: logoFloat 3s ease-in-out infinite;
+}
+@keyframes logoFloat {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50%      { transform: translateY(-8px) rotate(4deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-badge { animation: none; }
+}
 
 html {
   -webkit-text-size-adjust: 100%;
@@ -306,6 +325,7 @@ label {
 }
 
 /* Floating Bottom Navigation */
+nav[hidden] { display: none; }
 nav {
   position: fixed;
   bottom: calc(14px + env(safe-area-inset-bottom));
@@ -928,7 +948,7 @@ nav a.on {
   border-bottom: 2px dashed var(--line);
 }
 </style>
-<!-- Tesseract removed: OCR handled by backend RapidAPI -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 </head>
 <body>
 <canvas id="confetti-canvas"></canvas>
@@ -1184,14 +1204,21 @@ function toggleTheme() {
   document.documentElement.setAttribute('data-theme', currentTheme);
   localStorage.setItem('splitwoi_theme', currentTheme);
   playSfx('click');
-  renderTopBar();
+  updateTopBarIcons();
 }
 
 function toggleSound() {
   soundEnabled = !soundEnabled;
   localStorage.setItem('splitwoi_sound', soundEnabled);
   if (soundEnabled) playSfx('click');
-  renderTopBar();
+  updateTopBarIcons();
+}
+
+function updateTopBarIcons() {
+  const s = document.querySelector('#snd-btn i');
+  if (s) s.className = 'ph-fill ' + (soundEnabled ? 'ph-speaker-high' : 'ph-speaker-slash');
+  const t = document.querySelector('#thm-btn i');
+  if (t) t.className = 'ph-fill ' + (currentTheme === 'dark' ? 'ph-sun' : 'ph-moon');
 }
 
 // Render Top Bar (Logo, Theme Toggle, Sound Toggle, Secret Logo Tap Trigger)
@@ -1208,9 +1235,15 @@ function renderTopBar() {
         <span class="brand-badge">need money.</span>
       </div>
       <div class="top-actions">
-        <button class="icon-btn" id="dev-share-btn" title="Open on another device">📱</button>
-        <button class="icon-btn" id="snd-btn" title="Toggle Sound (Web Audio)">${soundEnabled ? '🔊' : '🔇'}</button>
-        <button class="icon-btn" id="thm-btn" title="Toggle Light/Dark Theme">${currentTheme === 'dark' ? '☀️' : '🌙'}</button>
+        <button class="icon-btn" id="dev-share-btn" title="Open on another device">
+          <i class="ph-fill ph-device-mobile"></i>
+        </button>
+        <button class="icon-btn" id="snd-btn" title="Toggle Sound (Web Audio)">
+          <i class="ph-fill ${soundEnabled ? 'ph-speaker-high' : 'ph-speaker-slash'}"></i>
+        </button>
+        <button class="icon-btn" id="thm-btn" title="Toggle Light/Dark Theme">
+          <i class="ph-fill ${currentTheme === 'dark' ? 'ph-sun' : 'ph-moon'}"></i>
+        </button>
       </div>
     </div>
   `;
@@ -1296,7 +1329,7 @@ function authView(mode = 'login') {
     ${renderTopBar()}
     <div class="card anim-pop" style="max-width:420px;margin:5vh auto;padding:26px;">
       <div style="text-align:center;margin-bottom:18px;">
-        <span style="font-size:2.4rem;display:inline-block;">${isForgot ? '🔑' : '💸'}</span>
+        <div class="logo-badge"><i class="ph-fill ${isForgot ? 'ph-key' : 'ph-receipt'}"></i></div>
         <h2 style="margin:8px 0 4px;">${isForgot ? 'Reset Password' : 'SplitWoi!'}</h2>
         <p style="color:var(--mute);margin:0;font-size:0.95rem;">
           ${isForgot 
@@ -1659,15 +1692,26 @@ function computeLiveShares(items, tax) {
   return result;
 }
 
+function guessCategory(text) {
+  const t = (text || '').toLowerCase();
+  if (/coffee|cafe|resto|restaurant|warung|makan|food|bakery|kitchen|bistro|burger|pizza|sushi|tea|dimsum|beverage|kopi|nasi|mie|bakso|ayam|bebek|indomie/i.test(t)) return 'Food';
+  if (/mart|supermarket|indomaret|alfamart|store|shop|mall|grocer|market|hypermart|carrefour|lottemart/i.test(t)) return 'Shopping';
+  if (/gojek|grab|taxi|fuel|pertamina|transport|toll|parking|spbu|shell|bensin|bbm|bus|ojek|krl|mrt/i.test(t)) return 'Transport';
+  if (/cinema|bioskop|xxi|game|ktv|fun|play|karaoke|bowling|esports/i.test(t)) return 'Fun';
+  if (/pln|pdam|telkom|wifi|electric|water|bill|token|listrik|air|internet|pulsa|iuran/i.test(t)) return 'Bills';
+  return 'Other';
+}
+
 function parseReceipt(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const num = s => {
-    s = s.replace(/[^\d.,]/g, '');
+    if (!s) return 0;
+    s = String(s).replace(/[^\d.,]/g, '');
     if (/[.,]\d{3}(?!\d)/.test(s)) s = s.replace(/[.,]/g, '');
     else s = s.replace(/[.,]\d{1,2}$/, '').replace(/[.,]/g, '');
     return +s || 0;
   };
-  const SKIP = /total|tunai|cash|kembali|change|bayar|payment|diskon|discount|card|debit|qris/i;
+  const SKIP = /subtotal|total|tunai|cash|kembali|change|bayar|payment|diskon|discount|card|debit|qris|kembalian|terima|diterima/i;
   const TAX = /pajak|ppn|tax|service|serv\.?\s*charge|pb1/i;
   let date = '', tax = 0, items = [];
   const dm = text.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
@@ -1676,16 +1720,48 @@ function parseReceipt(text) {
     if (y.length === 2) y = '20' + y;
     if (+m <= 12 && +d <= 31) date = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
   }
-  const merchant = (lines.find(l => /[a-z]{3,}/i.test(l)) || '').slice(0, 40);
-  for (const l of lines) {
-    const m = l.match(/^(.*?)\s+(?:Rp\.?\s*)?(\d[\d.,]*)\s*$/i);
-    if (!m) continue;
-    const label = m[1].replace(/^\d+\s*[xX]?\s+/, '').replace(/[|_]/g, '').trim(), p = num(m[2]);
-    if (!label || p < 100) continue;
-    if (TAX.test(label)) tax += p;
-    else if (!SKIP.test(label) && /[a-z]{2,}/i.test(label)) items.push({ name: label.slice(0, 60), price: p, people: ['Me'] });
+  const merchantLine = lines.find(l => /[a-z]{3,}/i.test(l) && !/receipt|struk|nota|invoice|selamat/i.test(l));
+  const merchant = (merchantLine || '').replace(/[^a-zA-Z0-9\s.,&-]/g, '').trim().slice(0, 50);
+
+  for (let idx = 0; idx < lines.length; idx++) {
+    const l = lines[idx];
+    if (SKIP.test(l)) continue;
+    if (TAX.test(l)) {
+      const pm = l.match(/(?:Rp\.?\s*)?(\d[\d.,]*)\s*$/i);
+      if (pm) tax += num(pm[1]);
+      continue;
+    }
+    // Pattern: "2x Kopi 36000" or "2 x Kopi 36000"
+    let m = l.match(/^(\d+)\s*[xX*]\s+(.*?)\s+(?:Rp\.?\s*)?(\d[\d.,]*)\s*$/i);
+    if (m) {
+      const q = Math.max(1, parseInt(m[1]) || 1);
+      const name = m[2].trim();
+      const p = num(m[3]);
+      if (name && p > 0) {
+        items.push({ name: name.slice(0, 60), qty: q, unitPrice: Math.round(p / q), price: p, people: ['Me'] });
+        continue;
+      }
+    }
+    // Standard: "Item Name 25000"
+    m = l.match(/^(.*?)\s+(?:Rp\.?\s*)?(\d[\d.,]*)\s*$/i);
+    if (m) {
+      let label = m[1].replace(/[|_]/g, '').trim();
+      let p = num(m[2]);
+      if (!label || p < 100) continue;
+      let q = 1;
+      const qm = label.match(/^(\d+)\s+([a-zA-Z].*)/);
+      if (qm && parseInt(qm[1]) < 30) {
+        q = parseInt(qm[1]);
+        label = qm[2].trim();
+      }
+      if (/[a-z]{2,}/i.test(label) && !SKIP.test(label)) {
+        items.push({ name: label.slice(0, 60), qty: q, unitPrice: Math.round(p / q), price: p, people: ['Me'] });
+      }
+    }
   }
-  return { merchant, date, tax, items };
+  const textToScan = (merchant + ' ' + items.map(i => i.name).join(' ')).trim();
+  const category = guessCategory(textToScan);
+  return { merchant: merchant || 'Untitled Store', date: date || new Date().toISOString().slice(0, 10), category, tax, items };
 }
 
 async function newView() {
@@ -1703,12 +1779,17 @@ function draw() {
 
   app.innerHTML = `
     ${renderTopBar()}
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px;flex-wrap:wrap;">
       <h2 style="margin:0;">${d.id ? '✏️ Edit Receipt' : '📸 New Receipt'}</h2>
-      <label class="btn acc" style="padding:8px 18px;font-size:14px;cursor:pointer;">
-        <span>📷 Auto-Scan OCR</span>
-        <input id="f" type="file" accept="image/*" hidden>
-      </label>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button id="btn-ai-key" class="ghost" style="padding:7px 12px;font-size:13px;border-radius:10px;" title="Set Google Gemini API Key">
+          ${localStorage.getItem('splitwoi_gemini_key') ? '🔑 Gemini Key: Active' : '⚙️ AI Key'}
+        </button>
+        <label class="btn acc" style="padding:8px 16px;font-size:14px;cursor:pointer;">
+          <span>📷 Auto-Scan OCR</span>
+          <input id="f" type="file" accept="image/*" hidden>
+        </label>
+      </div>
     </div>
 
     <!-- Scanning HUD progress box -->
@@ -1903,7 +1984,24 @@ function draw() {
     }
   };
 
-  // Auto-Scan OCR via backend RapidAPI
+  if ($('#btn-ai-key')) {
+    $('#btn-ai-key').onclick = () => {
+      const cur = localStorage.getItem('splitwoi_gemini_key') || '';
+      const key = prompt('Masukkan Google Gemini API Key gratis (dari https://aistudio.google.com/app/apikey) untuk AI OCR super akurat & instan:\n\n(Kosongkan jika ingin menghapus key)', cur);
+      if (key !== null) {
+        if (key.trim()) {
+          localStorage.setItem('splitwoi_gemini_key', key.trim());
+          showToast('Gemini API Key tersimpan!', 'success');
+        } else {
+          localStorage.removeItem('splitwoi_gemini_key');
+          showToast('Gemini API Key dihapus', 'info');
+        }
+        draw();
+      }
+    };
+  }
+
+  // Auto-Scan OCR with AI + Automatic Local Tesseract Fallback
   $('#f').onchange = async e => {
     const f = e.target.files[0];
     if (!f) return;
@@ -1911,7 +2009,7 @@ function draw() {
     const txt = $('#scan-txt');
     hud.style.display = 'block';
     playSfx('scan');
-    txt.textContent = 'Scanning receipt with AI... ✨';
+    txt.textContent = 'Mempersiapkan gambar... ✨';
 
     try {
       const dataUrl = await new Promise((resolve, reject) => {
@@ -1922,8 +2020,53 @@ function draw() {
       });
 
       sync();
-      txt.textContent = 'Sending to OCR engine...';
-      const result = await api('scan', 'POST', { image: dataUrl });
+      let result = null;
+      let usedLocal = false;
+
+      // 1. Try Backend OCR
+      txt.textContent = 'Menganalisis struk dengan AI... ✨';
+      try {
+        const geminiKey = localStorage.getItem('splitwoi_gemini_key') || '';
+        result = await api('scan', 'POST', { image: dataUrl, geminiKey });
+      } catch (apiErr) {
+        console.warn('Backend AI OCR failed, falling back to local OCR:', apiErr.message);
+        txt.textContent = 'Server AI OCR offline. Beralih ke scanner browser lokal...';
+        usedLocal = true;
+      }
+
+      // 2. If Backend OCR returned null or error, run local Tesseract OCR
+      if (!result || !result.items || !result.items.length) {
+        usedLocal = true;
+        if (!window.Tesseract) {
+          txt.textContent = 'Memuat engine OCR lokal...';
+          await new Promise((res, rej) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+            s.onload = res;
+            s.onerror = () => rej(new Error('Gagal memuat engine OCR'));
+            document.head.appendChild(s);
+          });
+        }
+
+        txt.textContent = 'Membaca struk secara lokal... 0%';
+        const { data } = await Tesseract.recognize(f, 'eng', {
+          logger: m => {
+            if (m.status === 'recognizing text') {
+              txt.textContent = 'Membaca baris teks... ' + Math.round(m.progress * 100) + '%';
+            }
+          }
+        });
+
+        const parsed = parseReceipt(data.text);
+        result = {
+          merchant: parsed.merchant,
+          date: parsed.date,
+          category: parsed.category,
+          tax: parsed.tax,
+          items: parsed.items
+        };
+      }
+
       hud.style.display = 'none';
 
       // Pre-fill ALL form fields from OCR result
@@ -1945,11 +2088,15 @@ function draw() {
 
       playSfx('success');
       const count = result.items?.length || 0;
-      showToast(count ? `✅ Ditemukan ${count} item! Periksa dan sesuaikan jika perlu.` : '⚠️ Tidak ada item terdeteksi. Isi manual ya.', count ? 'success' : 'info');
+      if (usedLocal) {
+        showToast(count ? ('✅ Scanner lokal mendeteksi ' + count + ' item! Silakan periksa & sesuaikan.') : '⚠️ Tidak ada item terdeteksi. Silakan ketik manual.', count ? 'success' : 'info');
+      } else {
+        showToast(count ? ('✨ AI OCR mendeteksi ' + count + ' item! Silakan periksa & sesuaikan.') : '⚠️ Tidak ada item terdeteksi. Silakan ketik manual.', count ? 'success' : 'info');
+      }
       draw();
     } catch (err) {
       hud.style.display = 'none';
-      showToast('Scan gagal: ' + err.message, 'error');
+      showToast('Gagal memproses struk: ' + err.message, 'error');
     }
   };
 }
