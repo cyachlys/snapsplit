@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="SplitWoi!">
-<meta name="theme-color" content="#f8f5ee">
+<meta name="theme-color" content="#fbf6f8">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%23c6ff3d'/><text x='50%' y='68%' font-size='55' font-weight='bold' text-anchor='middle' font-family='sans-serif'>⚡</text></svg>">
 <title>SplitWoi!</title>
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
@@ -90,11 +90,15 @@ body {
   width: 84px; height: 84px;
   margin: 0 auto 6px;
   border-radius: 24px;
+  width: 64px; height: 64px;
+  margin: 0 auto 6px;
+  border-radius: 18px;
   background: var(--acc);
   border: 2px solid var(--line);
   box-shadow: 4px 4px 0 var(--line);
   display: flex; align-items: center; justify-content: center;
   font-size: 44px; color: #111;
+  font-size: 32px; color: #111;
   animation: logoFloat 3s ease-in-out infinite;
 }
 @keyframes logoFloat {
@@ -446,22 +450,25 @@ nav a.on {
   font-size: 0.92rem;
 }
 
-/* Toast Messages */
+/* Toast Messages - SplitWoi! */
 #toast-box {
   position: fixed;
   top: 18px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 999;
+  z-index: 99999;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
   pointer-events: none;
+  width: max-content;
+  max-width: calc(100vw - 32px);
 }
 .toast {
   pointer-events: auto;
-  padding: 12px 20px;
-  border-radius: 99px;
+  padding: 13px 20px;
+  border-radius: 16px;
   border: 2px solid var(--line);
   box-shadow: var(--shadow);
   font-weight: 700;
@@ -469,11 +476,24 @@ nav a.on {
   display: flex;
   align-items: center;
   gap: 10px;
+  max-width: 100%;
   animation: slideDownFade 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.toast-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
 }
 .toast.success { background: var(--acc); color: #111; }
 .toast.error { background: var(--pink); color: #fff; }
 .toast.info { background: var(--card); color: var(--ink); }
+
+@media (max-width: 480px) {
+  #toast-box { width: calc(100vw - 32px); }
+  .toast { width: 100%; justify-content: flex-start; }
+}
 
 /* Confetti Canvas */
 #confetti-canvas {
@@ -947,9 +967,67 @@ nav a.on {
   height: 2px;
   border-bottom: 2px dashed var(--line);
 }
+/* ============================================================
+   WARNA BARU: Lime neon + Pink | Terang = Light glass | Gelap = Soft dark
+   ============================================================ */
+:root { --acc: #c6ff3d; --pink: #ff4f9a; }
+
+nav { background: #120e1a !important; }
+nav a { color: #efe9f7 !important; }
+nav a.on { color: #111 !important; }
+
+/* ---------- MODE TERANG ---------- */
+:root:not([data-theme="dark"]) {
+  --line: rgba(255,255,255,.75);
+  --card-sub: rgba(255,255,255,.5);
+}
+:root:not([data-theme="dark"]) body {
+  background:
+    radial-gradient(700px 520px at 0% 0%, rgba(255,79,154,.55), transparent 62%),
+    radial-gradient(700px 520px at 100% 45%, rgba(198,255,61,.65), transparent 62%),
+    radial-gradient(600px 400px at 20% 105%, rgba(160,130,255,.5), transparent 62%),
+    #f0e2ec !important;
+  background-attachment: fixed !important;
+}
+:root:not([data-theme="dark"]) :is(.card, .stat, .hero-banner, .icon-btn, .quick-pill) {
+  background: rgba(255,255,255,.66) !important;
+  border-color: rgba(255,255,255,.9) !important;
+}
+/* bayangan lembut pink di belakang kartu (tetap ada bayangan hitam khasmu) */
+:root:not([data-theme="dark"]) :is(.card, .stat, .hero-banner) {
+  box-shadow: var(--shadow), 0 22px 50px rgba(214,36,111,.28) !important;
+}
+:root:not([data-theme="dark"]) .hero-banner { background: linear-gradient(135deg, rgba(255,255,255,.7), rgba(255,79,154,.2)) !important; }
+:root:not([data-theme="dark"]) .quick-pill { border-color: rgba(255,79,154,.5) !important; color: #c0286f !important; }
+:root:not([data-theme="dark"]) :is(input, select, textarea) { background: rgba(255,255,255,.65) !important; border-color: rgba(255,255,255,.95) !important; }
+
+/* ---------- MODE GELAP ---------- */
+[data-theme="dark"] {
+  --bg: #15121c; --card: #1e1a28; --card-sub: #272234;
+  --line: #322b42; --mute: #a79db8;
+}
+[data-theme="dark"] body {
+  background: radial-gradient(600px 400px at 100% 0%, rgba(255,79,154,.2), transparent 60%), #15121c !important;
+  background-attachment: fixed !important;
+}
+[data-theme="dark"] .hero-banner { background: linear-gradient(135deg, #241d33, #3a1d33) !important; }
+[data-theme="dark"] .quick-pill { border-color: rgba(255,79,154,.6) !important; color: #ff8fc0 !important; }
+[data-theme="dark"] :is(input, select, textarea) { background: #272234 !important; }
+[data-theme="dark"] .icon-btn { color: #ff8fc0; }
+
+
+/* bayangan di belakang logo (kotak lime) */
+.logo-badge { box-shadow: 4px 4px 0 #19191d, 0 18px 36px rgba(160,230,0,.55), 0 8px 22px rgba(255,79,154,.35) !important; }
+[data-theme="dark"] .logo-badge { box-shadow: 4px 4px 0 #000, 0 16px 40px rgba(198,255,61,.4), 0 8px 24px rgba(255,79,154,.3) !important; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 </head>
+<script>
+    if (!sessionStorage.getItem("splitwoi_loading")) {
+        sessionStorage.setItem("splitwoi_loading", "1");
+        window.location.replace("loading.html");
+    }
+</script>
 <body>
 <canvas id="confetti-canvas"></canvas>
 <div id="toast-box"></div>
@@ -1123,15 +1201,26 @@ function fireConfetti() {
 function showToast(msg, type = 'info') {
   const box = document.getElementById('toast-box');
   if (!box) return;
+
   const t = document.createElement('div');
   t.className = `toast ${type}`;
-  const icon = type === 'success' ? '🎉' : type === 'error' ? '⚠️' : '✨';
-  t.innerHTML = `<span>${icon}</span> <span>${esc(msg)}</span>`;
+
+  const icon = type === 'success'
+    ? 'ph-check-circle'
+    : type === 'error'
+    ? 'ph-warning-circle'
+    : 'ph-sparkle';
+
+  t.innerHTML = `
+    <i class="ph-fill ${icon} toast-icon" aria-hidden="true"></i>
+    <span>${esc(msg)}</span>
+  `;
+
   box.appendChild(t);
+
   setTimeout(() => {
     t.style.opacity = '0';
     t.style.transform = 'translateY(-10px)';
-    t.style.transition = 'all 0.25s ease';
     setTimeout(() => t.remove(), 250);
   }, 3200);
 }
@@ -1334,30 +1423,26 @@ function authView(mode = 'login') {
         <p style="color:var(--mute);margin:0;font-size:0.95rem;">
           ${isForgot 
             ? 'Enter your registered email and choose a new password.' 
-            : 'Scan receipts. Track spend. Split bills without the awkward texts.'}
+            : 'Split the Bills, No Awkward Texts.'}
         </p>
       </div>
-
       <div id="auth-err"></div>
-
       ${isReg ? '<label>Your name</label><input id="n" placeholder="e.g. Alex">' : ''}
-
       <label>Email address</label>
-      <input id="e" type="email" placeholder="name@email.com">
-
+      <input id="e" type="email" placeholder="name@gmail.com">
       ${!isForgot ? `
         <label>Password</label>
-        <input id="p" type="password" placeholder="Min 6 characters">
+        <input id="p" type="password" placeholder="min 6 characters">
       ` : `
         <label>New Password</label>
-        <input id="p" type="password" placeholder="Min 6 characters">
+        <input id="p" type="password" placeholder="min 6 characters">
         <label>Confirm New Password</label>
         <input id="p2" type="password" placeholder="Repeat new password">
       `}
 
       <div style="display:flex;gap:10px;margin-top:14px;">
         <button class="acc" id="go" style="flex:1;">
-          ${isForgot ? 'Reset Password & Log In' : isReg ? 'Create Account ✨' : 'Log In'}
+          ${isForgot ? 'Reset Password & Log In' : isReg ? 'Create Account' : 'Log In'}
         </button>
       </div>
 
@@ -1895,7 +1980,7 @@ function draw() {
       </div>
 
       <div style="display:flex;gap:10px;">
-        <button class="acc" id="save" style="flex:1;">${d.id ? '💾 Save Changes' : '🎉 Save Receipt'}</button>
+        <button class="acc" id="save" style="flex:1;">${d.id ? '💾 Save Changes' : 'Save Receipt'}</button>
         ${d.id ? '<button class="ghost" id="cx">Cancel</button>' : ''}
       </div>
     </div>
@@ -2230,7 +2315,7 @@ async function people() {
     <div class="card anim-pop">
       <h3 style="margin-top:0;">Your Friend Circle</h3>
       <div style="display:flex;gap:8px;">
-        <input id="fn" placeholder="Add a friend's name (e.g. Chelsea, Ashila)" style="margin:0;">
+        <input id="fn" placeholder="Add a friend's name (e.g. Alex, Steve)" style="margin:0;">
         <button class="acc" id="fa">Add Friend</button>
       </div>
       <div class="chips" style="margin-top:14px;">
@@ -2569,10 +2654,10 @@ function renderVaultUsers(users) {
             </div>
             <div class="vault-user-email">${esc(u.email)}</div>
             <div class="vault-user-tags">
-              <span class="vault-mini-tag">🧾 ${u.receipts_count} receipts</span>
-              <span class="vault-mini-tag">💰 ${rp(u.total_spent)} spent</span>
-              <span class="vault-mini-tag">👥 ${u.friends_count} friends</span>
-              ${u.debts_owed > 0 ? `<span class="vault-mini-tag" style="color:var(--pink);border-color:var(--pink);">⏳ ${rp(u.debts_owed)} owed to them</span>` : '<span class="vault-mini-tag" style="color:#10b981;">✓ Debts clear</span>'}
+              <span class="vault-mini-tag"> ${u.receipts_count} receipts</span>
+              <span class="vault-mini-tag"> ${rp(u.total_spent)} spent</span>
+              <span class="vault-mini-tag"> ${u.friends_count} friends</span>
+              ${u.debts_owed > 0 ? `<span class="vault-mini-tag" style="color:var(--pink);border-color:var(--pink);"> ${rp(u.debts_owed)} owed to them</span>` : '<span class="vault-mini-tag" style="color:#10b981;">✓ Debts clear</span>'}
             </div>
           </div>
           <div class="vault-user-actions">
